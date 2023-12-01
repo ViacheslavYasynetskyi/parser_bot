@@ -1,29 +1,18 @@
-import os
-from dotenv import load_dotenv
-
 import telebot
-from telethon.sync import TelegramClient
 import json
 
-load_dotenv()
-
-TOKEN = os.environ.get("TOKEN")
-api_id = os.environ.get("API_ID")
-api_hash = os.environ.get("API_HASH")
-admin_channel_id = os.environ.get("ADMIN_CHANEL_ID")
-
+TOKEN = "6725364063:AAHppfbYZ0NOz4PdZKbMERcvRbIi35tRAJs"
 bot = telebot.TeleBot(TOKEN)
 
 # Змінні для збереження налаштувань
 channels_to_track = set()
+admin_channel_id = 2075727545
 data = {'posted_messages': []}
-
 
 def save_settings():
     settings = {'channels_to_track': list(channels_to_track)}
     with open('settings.json', 'w') as file:
         json.dump(settings, file)
-
 
 def load_settings():
     try:
@@ -33,33 +22,21 @@ def load_settings():
     except FileNotFoundError:
         pass
 
-
 def save_data(data):
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
-
-# Підключення до Telegram API
-client = TelegramClient('session_name', api_id, api_hash)
-client.start()
-
-# Аутентифікація клієнта
-with client:
 # Завантажуємо збережені налаштування
-    load_settings()
+load_settings()
 
-    @bot.message_handler(commands=['start', 'help'])
-    def send_welcome(message):
-        bot.reply_to(message,
-                     "Привіт! Я тут, щоб відстежувати канали за тобою. Використовуй /add_channel та /list_channels.")
-        print("Command received: /start")
-
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "Привіт! Я тут, щоб відстежувати канали за тобою. Використовуй /add_channel та /list_channels.")
 
 @bot.message_handler(commands=['add_channel'])
 def add_channel(message):
     msg = bot.reply_to(message, "Введи ім'я каналу (без '@'):")
     bot.register_next_step_handler(msg, process_channel_name)
-
 
 def process_channel_name(message):
     try:
@@ -70,26 +47,25 @@ def process_channel_name(message):
     except Exception:
         bot.reply_to(message, 'Виникла помилка. Спробуйте ще раз.')
 
-
 @bot.message_handler(commands=['list_channels'])
 def list_channels(message):
     bot.reply_to(message, f"Відстежувані канали: {', '.join(channels_to_track)}")
-
 
 def process_message(message):
     text = message.text
 
     if text not in data['posted_messages']:
         for channel in channels_to_track:
+            print(f"Forwarding message to channel {channel}")
             try:
-                bot.send_message(admin_channel_id, f"Forwarded from {channel}:\n\n{text}")
+                bot.forward_message(admin_channel_id, channel, message.message_id)
                 print(f"Message forwarded successfully to channel {channel}")
             except Exception as e:
                 print(f"Error forwarding message to channel {channel}: {e}")
+                print(f"Помилка при пересиланні повідомлення в канал {channel}: {e}")
 
         data['posted_messages'].append(text)
         save_data(data)
-
 
 @bot.message_handler(func=lambda message: True)
 def handle_messages(message):

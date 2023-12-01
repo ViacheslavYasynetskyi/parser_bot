@@ -1,2 +1,5 @@
 venv
 .idea
+.env
+bot1.py
+bot2.py
